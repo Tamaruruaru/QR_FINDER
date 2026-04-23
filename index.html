@@ -5,38 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buscador de Puertos GSA</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f9; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .search-box { margin-bottom: 20px; display: flex; gap: 10px; }
-        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f0f2f5; color: #333; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .search-box { margin-bottom: 25px; display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; outline: none; transition: border-color 0.3s; }
+        input:focus { border-color: #007bff; }
+        button { padding: 12px 25px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         button:hover { background: #0056b3; }
-        .info-header { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; padding: 15px; background: #e9ecef; border-radius: 4px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #007bff; color: white; }
-        tr:nth-child(even) { background-color: #f2f2f2; }
-        .free { color: green; font-weight: bold; }
-        .occupied { color: red; }
+        .info-header { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 25px; padding: 20px; background: #f8f9fa; border-left: 5px solid #007bff; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { border: 1px solid #eee; padding: 12px; text-align: center; }
+        th { background-color: #007bff; color: white; text-transform: uppercase; font-size: 13px; }
+        tr:nth-child(even) { background-color: #fafafa; }
+        .free { color: #28a745; font-weight: bold; }
+        .occupied { color: #dc3545; font-weight: bold; }
+        a { color: #007bff; text-decoration: none; font-weight: bold; }
+        a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Buscador de Puertos (QR)</h2>
+    <h2>🔎 Buscador de Puertos Externos</h2>
     <div class="search-box">
-        <input type="text" id="qrInput" placeholder="Ingrese QR (ej. TP1387397)" value="TP1387397">
-        <button onclick="buscarQR()">Consultar</button>
+        <input type="text" id="qrInput" placeholder="Escribe el QR (ej: TP1387397)" value="TP1387397">
+        <button onclick="buscarQR()">CONSULTAR</button>
     </div>
 
     <div id="resultado" style="display:none;">
-        <div class="info-header" id="detallesGenerales">
-            </div>
-
-        <table id="tablaPuertos">
+        <div class="info-header" id="detallesGenerales"></div>
+        <table>
             <thead>
                 <tr>
-                    <th>#</th>
+                    <th># Pto</th>
                     <th>Frame</th>
                     <th>Slot</th>
                     <th>Puerto</th>
@@ -51,17 +52,20 @@
 <script>
     async function buscarQR() {
         const qr = document.getElementById('qrInput').value.trim();
-        const url = `https://apiservice.sistemastp.com.mx/gsa/lite/v1/port/qr?qr=${qr}`;
+        if(!qr) return;
+
+        // Usamos un proxy para evitar el error de CORS que viste en pantalla
+        const proxy = "https://corsproxy.io/?";
+        const apiUrl = `https://apiservice.sistemastp.com.mx/gsa/lite/v1/port/qr?qr=${qr}`;
         
         try {
-            const response = await fetch(url);
+            const response = await fetch(proxy + encodeURIComponent(apiUrl));
+            if (!response.ok) throw new Error('Error en respuesta');
+            
             const data = await response.json();
-
-            if (data) {
-                mostrarResultados(data, qr);
-            }
+            mostrarResultados(data, qr);
         } catch (error) {
-            alert("Error al consultar la API. Asegúrate de tener conexión o que el QR sea válido.");
+            alert("No se pudo obtener datos. Verifica que el QR sea correcto.");
             console.error(error);
         }
     }
@@ -70,38 +74,39 @@
         document.getElementById('resultado').style.display = 'block';
         const detalles = document.getElementById('detallesGenerales');
         const cuerpo = document.getElementById('cuerpoTabla');
-        
-        // Asumiendo estructura típica de estos JSON (ajustar nombres de campos si varían)
-        const lat = data.latitud || data.lat || "0";
-        const lon = data.longitud || data.lng || "0";
-        const mapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
 
-        // Contar puertos libres
-        const puertos = data.puertos || [];
-        const libres = puertos.filter(p => p.status === 'LIBRE' || p.disponible).length;
+        // Extraer datos del JSON (ajustados a la estructura de planta externa)
+        const lat = data.latitud || 0;
+        const lon = data.longitud || 0;
+        const mapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+        
+        // Mapeo de puertos
+        const listaPuertos = data.puertos || [];
+        const libres = listaPuertos.filter(p => p.status === 'LIBRE').length;
 
         detalles.innerHTML = `
             <div>
                 <strong>QR:</strong> ${qr}<br>
-                <strong>Nombre:</strong> ${data.nombre || 'N/A'}<br>
+                <strong>Equipo:</strong> ${data.nombre || 'N/A'}<br>
                 <strong>Puertos Libres:</strong> <span class="free">${libres}</span>
             </div>
             <div>
                 <strong>Coordenadas:</strong> ${lat}, ${lon}<br>
-                <strong>Ubicación:</strong> <a href="${mapsLink}" target="_blank">Ver en Google Maps</a>
+                <strong>Ubicación:</strong> 📍 <a href="${mapsLink}" target="_blank">Abrir en Google Maps</a>
             </div>
         `;
 
         cuerpo.innerHTML = "";
-        puertos.forEach((p, index) => {
-            const row = `<tr>
-                <td>${index + 1}</td>
-                <td>${p.frame || data.frame || '-'}</td>
-                <td>${p.slot || '-'}</td>
-                <td>${p.puerto || p.numero_puerto || '-'}</td>
-                <td class="${p.status === 'LIBRE' ? 'free' : 'occupied'}">${p.status || 'N/A'}</td>
-            </tr>`;
-            cuerpo.insertAdjacentHTML('beforeend', row);
+        listaPuertos.forEach((p, index) => {
+            cuerpo.insertAdjacentHTML('beforeend', `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${p.frame || data.frame || '0'}</td>
+                    <td>${p.slot || '0'}</td>
+                    <td>${p.puerto || '0'}</td>
+                    <td class="${p.status === 'LIBRE' ? 'free' : 'occupied'}">${p.status}</td>
+                </tr>
+            `);
         });
     }
 </script>
