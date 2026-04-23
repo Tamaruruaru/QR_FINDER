@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Puertos GSA</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .search-box { margin-bottom: 20px; display: flex; gap: 10px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .info-header { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; padding: 15px; background: #e9ecef; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        .free { color: green; font-weight: bold; }
+        .occupied { color: red; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Buscador de Puertos (QR)</h2>
+    <div class="search-box">
+        <input type="text" id="qrInput" placeholder="Ingrese QR (ej. TP1387397)" value="TP1387397">
+        <button onclick="buscarQR()">Consultar</button>
+    </div>
+
+    <div id="resultado" style="display:none;">
+        <div class="info-header" id="detallesGenerales">
+            </div>
+
+        <table id="tablaPuertos">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Frame</th>
+                    <th>Slot</th>
+                    <th>Puerto</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoTabla"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    async function buscarQR() {
+        const qr = document.getElementById('qrInput').value.trim();
+        const url = `https://apiservice.sistemastp.com.mx/gsa/lite/v1/port/qr?qr=${qr}`;
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data) {
+                mostrarResultados(data, qr);
+            }
+        } catch (error) {
+            alert("Error al consultar la API. Asegúrate de tener conexión o que el QR sea válido.");
+            console.error(error);
+        }
+    }
+
+    function mostrarResultados(data, qr) {
+        document.getElementById('resultado').style.display = 'block';
+        const detalles = document.getElementById('detallesGenerales');
+        const cuerpo = document.getElementById('cuerpoTabla');
+        
+        // Asumiendo estructura típica de estos JSON (ajustar nombres de campos si varían)
+        const lat = data.latitud || data.lat || "0";
+        const lon = data.longitud || data.lng || "0";
+        const mapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+
+        // Contar puertos libres
+        const puertos = data.puertos || [];
+        const libres = puertos.filter(p => p.status === 'LIBRE' || p.disponible).length;
+
+        detalles.innerHTML = `
+            <div>
+                <strong>QR:</strong> ${qr}<br>
+                <strong>Nombre:</strong> ${data.nombre || 'N/A'}<br>
+                <strong>Puertos Libres:</strong> <span class="free">${libres}</span>
+            </div>
+            <div>
+                <strong>Coordenadas:</strong> ${lat}, ${lon}<br>
+                <strong>Ubicación:</strong> <a href="${mapsLink}" target="_blank">Ver en Google Maps</a>
+            </div>
+        `;
+
+        cuerpo.innerHTML = "";
+        puertos.forEach((p, index) => {
+            const row = `<tr>
+                <td>${index + 1}</td>
+                <td>${p.frame || data.frame || '-'}</td>
+                <td>${p.slot || '-'}</td>
+                <td>${p.puerto || p.numero_puerto || '-'}</td>
+                <td class="${p.status === 'LIBRE' ? 'free' : 'occupied'}">${p.status || 'N/A'}</td>
+            </tr>`;
+            cuerpo.insertAdjacentHTML('beforeend', row);
+        });
+    }
+</script>
+
+</body>
+</html>
