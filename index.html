@@ -5,23 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buscador GSA - Planta Externa</title>
     <style>
-        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 950px; margin: auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { color: #333; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
-        .search-area { display: flex; gap: 10px; margin: 20px 0; }
-        input { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 16px; }
-        button { padding: 12px 25px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #0056b3; }
-        .card-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .stat-box b { color: var(--primary); font-size: 1.1em; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { background: var(--primary); color: white; padding: 12px; text-transform: uppercase; font-size: 12px; }
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .search-area { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; }
+        button { padding: 12px 25px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .card-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: var(--primary); color: white; padding: 12px; font-size: 13px; }
         td { padding: 10px; border: 1px solid #eee; text-align: center; }
-        tr:nth-child(even) { background: #fafafa; }
-        .status-libre { color: var(--success); font-weight: bold; background: #e8f5e9; border-radius: 4px; padding: 4px; }
-        .status-ocupado { color: var(--danger); font-weight: bold; background: #ffebee; border-radius: 4px; padding: 4px; }
-        .maps-btn { display: inline-block; padding: 5px 10px; background: #4285F4; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; }
+        .status-libre { color: var(--success); font-weight: bold; }
+        .status-ocupado { color: var(--danger); font-weight: bold; }
+        .maps-link { color: #fff; background: #4285F4; padding: 5px 10px; text-decoration: none; border-radius: 4px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -29,82 +25,81 @@
 <div class="container">
     <h2>🛠️ Buscador de Puertos GSA</h2>
     <div class="search-area">
-        <input type="text" id="qrInput" placeholder="Ejemplo: TP1387397" value="TP1387397">
-        <button onclick="consultarAPI()">Consultar</button>
+        <input type="text" id="qrInput" placeholder="Ej: TP1387397" value="TP1387397">
+        <button onclick="consultar()">Consultar</button>
     </div>
 
-    <div id="loading" style="display:none; text-align:center; padding: 20px;">Cargando datos...</div>
+    <div id="status" style="display:none; text-align:center; padding: 10px; color: #666;">Buscando...</div>
 
-    <div id="content" style="display:none;">
-        <div class="card-info" id="generalData"></div>
+    <div id="resultado" style="display:none;">
+        <div class="card-info" id="headerData"></div>
         <table>
             <thead>
                 <tr>
-                    <th>#</th>
+                    <th># Pto</th>
                     <th>Frame</th>
                     <th>Slot</th>
                     <th>Puerto</th>
                     <th>Estado</th>
                 </tr>
             </thead>
-            <tbody id="portTable"></tbody>
+            <tbody id="tableBody"></tbody>
         </table>
     </div>
 </div>
 
 <script>
-    async function consultarAPI() {
+    async function consultar() {
         const qr = document.getElementById('qrInput').value.trim();
-        if (!qr) return alert("Ingresa un QR");
+        const statusDiv = document.getElementById('status');
+        const resDiv = document.getElementById('resultado');
 
-        const loader = document.getElementById('loading');
-        const content = document.getElementById('content');
-        
-        loader.style.display = 'block';
-        content.style.display = 'none';
+        statusDiv.innerText = "Conectando con la API...";
+        statusDiv.style.display = "block";
+        resDiv.style.display = "none";
 
-        // Usamos corsproxy.io que es bastante estable para este tipo de tareas
-        const proxy = "https://corsproxy.io/?";
-        const targetUrl = `https://apiservice.sistemastp.com.mx/gsa/lite/v1/port/qr?qr=${qr}`;
+        // Usamos AllOrigins para saltar el CORS
+        const url = `https://apiservice.sistemastp.com.mx/gsa/lite/v1/port/qr?qr=${qr}`;
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
 
         try {
-            const response = await fetch(proxy + encodeURIComponent(targetUrl));
-            if (!response.ok) throw new Error("Error en la red");
+            const response = await fetch(proxyUrl);
+            const wrapper = await response.json();
             
-            const data = await response.json();
-            renderizar(data, qr);
+            // AllOrigins devuelve el JSON dentro de una propiedad 'contents' como string
+            const data = JSON.parse(wrapper.contents);
+            
+            if (!data) throw new Error("No se recibieron datos");
+            render(data, qr);
+            statusDiv.style.display = "none";
         } catch (err) {
             console.error(err);
-            alert("Error al conectar con la API. El proxy podría estar saturado o el QR no existe.");
-        } finally {
-            loader.style.display = 'none';
+            statusDiv.innerText = "Error: El servidor de la API bloqueó la conexión. Prueba de nuevo en unos segundos.";
+            statusDiv.style.color = "red";
         }
     }
 
-    function renderizar(data, qr) {
-        const infoDiv = document.getElementById('generalData');
-        const tableBody = document.getElementById('portTable');
+    function render(data, qr) {
+        const header = document.getElementById('headerData');
+        const body = document.getElementById('tableBody');
         
-        // Coordenadas y Google Maps
         const lat = data.latitud || 0;
         const lon = data.longitud || 0;
-        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
-
-        // Conteo de libres
+        const maps = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
         const puertos = data.puertos || [];
         const libres = puertos.filter(p => String(p.status).toUpperCase() === 'LIBRE').length;
 
-        infoDiv.innerHTML = `
-            <div class="stat-box"><b>QR:</b><br>${qr}</div>
-            <div class="stat-box"><b>Nombre:</b><br>${data.nombre || 'N/A'}</div>
-            <div class="stat-box"><b>Libres:</b><br><span style="color:green">${libres}</span> de ${puertos.length}</div>
-            <div class="stat-box"><b>Ubicación:</b><br><a href="${googleMapsUrl}" target="_blank" class="maps-btn">📍 Ver en Maps</a></div>
+        header.innerHTML = `
+            <div><b>QR:</b><br>${qr}</div>
+            <div><b>Nombre:</b><br>${data.nombre || 'N/A'}</div>
+            <div><b>Libres:</b><br><span style="color:green">${libres}</span> / ${puertos.length}</div>
+            <div><b>Ubicación:</b><br><a href="${maps}" target="_blank" class="maps-link">📍 Ver Maps</a></div>
         `;
 
-        tableBody.innerHTML = "";
+        body.innerHTML = "";
         puertos.forEach((p, i) => {
             const isLibre = String(p.status).toUpperCase() === 'LIBRE';
-            const row = `
+            body.insertAdjacentHTML('beforeend', `
                 <tr>
                     <td>${i + 1}</td>
                     <td>${p.frame || data.frame || '0'}</td>
@@ -112,11 +107,10 @@
                     <td>${p.puerto || '0'}</td>
                     <td><span class="${isLibre ? 'status-libre' : 'status-ocupado'}">${p.status}</span></td>
                 </tr>
-            `;
-            tableBody.insertAdjacentHTML('beforeend', row);
+            `);
         });
 
-        document.getElementById('content').style.display = 'block';
+        document.getElementById('resultado').style.display = 'block';
     }
 </script>
 
