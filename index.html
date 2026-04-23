@@ -1,136 +1,46 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador GSA - Detalle de Puertos</title>
-    <style>
-        :root { --primary: #053b6f; --accent: #007bff; --success: #28a745; --danger: #dc3545; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        h2 { color: var(--primary); text-align: center; border-bottom: 3px solid var(--accent); padding-bottom: 10px; }
-        
-        .search-box { display: flex; gap: 10px; margin: 20px 0; }
-        input { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; }
-        button { padding: 12px 25px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        button:hover { background: var(--accent); }
-
-        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .card { background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); }
-        .card b { color: var(--primary); display: block; margin-bottom: 5px; text-transform: uppercase; font-size: 12px; }
-        
-        .maps-btn { display: inline-block; margin-top: 10px; padding: 8px 12px; background: #4285F4; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: bold; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th { background-color: var(--primary); color: white; padding: 12px; text-align: center; }
-        td { border: 1px solid #eee; padding: 10px; text-align: center; }
-        tr:nth-child(even) { background-color: #fcfcfc; }
-        .status-libre { color: var(--success); font-weight: bold; }
-        .status-ocupado { color: var(--danger); font-weight: bold; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h2>📋 Detalle de Red Externa (GSA)</h2>
+function mostrarDatos(data, qr) {
+    document.getElementById('resultado').style.display = 'block';
     
-    <div class="search-box">
-        <input type="text" id="qrInput" placeholder="Ingrese QR (ej: TP1387397)" value="TP1387397">
-        <button onclick="consultar()">BUSCAR</button>
-    </div>
+    // 1. Datos Generales (usando los campos del JSON real)
+    document.getElementById('resQR').innerText = data.qr || qr;
+    document.getElementById('resNombre').innerText = data.nombreCaja || 'Sin nombre';
+    
+    const lat = data.latitud || 0;
+    const lon = data.longitud || 0;
+    document.getElementById('resCoords').innerText = `${lat}, ${lon}`;
+    document.getElementById('resMaps').href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
 
-    <div id="loading" style="display:none; text-align:center; color: #666;">Obteniendo información del nodo...</div>
-
-    <div id="resultado" style="display:none;">
-        <div class="info-grid">
-            <div class="card"><b>QR Identificado</b><span id="resQR">-</span></div>
-            <div class="card"><b>Nombre del Equipo</b><span id="resNombre">-</span></div>
-            <div class="card"><b>Puertos Libres</b><span id="resLibres" style="font-size: 1.2em;">-</span></div>
-            <div class="card">
-                <b>Ubicación y Coordenadas</b>
-                <span id="resCoords">-</span><br>
-                <a id="resMaps" href="#" target="_blank" class="maps-btn">📍 Abrir Google Maps</a>
-            </div>
-        </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th># Puerto</th>
-                    <th>Frame</th>
-                    <th>Slot</th>
-                    <th>Puerto (ID)</th>
-                    <th>N° Puerto Real</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
-            <tbody id="tablaPuertos"></tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    async function consultar() {
-        const qr = document.getElementById('qrInput').value.trim();
-        if(!qr) return;
-
-        document.getElementById('loading').style.display = 'block';
-        document.getElementById('resultado').style.display = 'none';
-
-        // Usamos AllOrigins para Netlify/GitHub
-        const url = `https://apiservice.sistemastp.com.mx/gsa/lite/v1/port/qr?qr=${qr}`;
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-
-        try {
-            const response = await fetch(proxyUrl);
-            const wrapper = await response.json();
-            const data = JSON.parse(wrapper.contents);
-
-            mostrarDatos(data, qr);
-        } catch (error) {
-            alert("Error al obtener datos. Revisa el QR o la conexión.");
-            console.error(error);
-        } finally {
-            document.getElementById('loading').style.display = 'none';
-        }
-    }
-
-    function mostrarDatos(data, qr) {
-        document.getElementById('resultado').style.display = 'block';
+    // 2. Acceder al primer splitter y sus puertos
+    const tabla = document.getElementById('tablaPuertos');
+    tabla.innerHTML = "";
+    
+    // Verificamos que existan splitters
+    if (data.splitters && data.splitters.length > 0) {
+        const splitter = data.splitters[0]; // Tomamos el primer splitter
+        const puertos = splitter.listmodelpuertos || [];
         
-        // 1. Datos Generales
-        document.getElementById('resQR').innerText = qr;
-        document.getElementById('resNombre').innerText = data.nombre || 'Sin nombre';
-        
-        const lat = data.latitud || 0;
-        const lon = data.longitud || 0;
-        document.getElementById('resCoords').innerText = `${lat}, ${lon}`;
-        document.getElementById('resMaps').href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
-
-        // 2. Procesar Puertos
-        const puertos = data.puertos || [];
-        const libres = puertos.filter(p => String(p.status).toUpperCase() === 'LIBRE').length;
+        // El JSON usa "1" para LIBRE, ajustamos el conteo
+        const libres = puertos.filter(p => p.estatusPuerto == "1").length;
         document.getElementById('resLibres').innerHTML = `<b style="color:green">${libres}</b> de ${puertos.length} disponibles`;
 
-        const tabla = document.getElementById('tablaPuertos');
-        tabla.innerHTML = "";
-
-        puertos.forEach((p, index) => {
-            const isLibre = String(p.status).toUpperCase() === 'LIBRE';
+        puertos.forEach((p) => {
+            // Estatus: 1 es Libre, cualquier otro suele ser Ocupado (Cuenta asignada)
+            const esLibre = p.estatusPuerto == "1";
+            const estadoTexto = esLibre ? "LIBRE" : (p.cuenta || "OCUPADO");
+            
             const row = `
                 <tr>
-                    <td><b>${index + 1}</b></td>
-                    <td>${p.frame || data.frame || '0'}</td>
-                    <td>${p.slot || '0'}</td>
-                    <td>${p.puerto || '0'}</td>
-                    <td>${p.numero_puerto || (index + 1)}</td>
-                    <td class="${isLibre ? 'status-libre' : 'status-ocupado'}">${p.status}</td>
+                    <td><b>${p.numeroPuerto}</b></td>
+                    <td>${splitter.frame || 'N/A'}</td>
+                    <td>${splitter.slot || 'N/A'}</td>
+                    <td>${splitter.puerto || 'N/A'}</td>
+                    <td>${p.numeroPuerto}</td>
+                    <td class="${esLibre ? 'status-libre' : 'status-ocupado'}">${estadoTexto}</td>
                 </tr>
             `;
             tabla.insertAdjacentHTML('beforeend', row);
         });
+    } else {
+        tabla.innerHTML = "<tr><td colspan='6'>No se encontraron splitters en este QR</td></tr>";
     }
-</script>
-
-</body>
-</html>
+}
