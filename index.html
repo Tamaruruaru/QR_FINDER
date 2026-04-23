@@ -1,3 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador GSA - Detalle de Puertos</title>
+    <style>
+        :root { --primary: #053b6f; --accent: #007bff; --success: #28a745; --danger: #dc3545; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h2 { color: var(--primary); text-align: center; border-bottom: 3px solid var(--accent); padding-bottom: 10px; }
+        
+        .search-box { display: flex; gap: 10px; margin: 20px 0; }
+        input { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; }
+        button { padding: 12px 25px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button:hover { background: var(--accent); }
+
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .card { background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); }
+        .card b { color: var(--primary); display: block; margin-bottom: 5px; text-transform: uppercase; font-size: 12px; }
+        
+        .maps-btn { display: inline-block; margin-top: 10px; padding: 8px 12px; background: #4285F4; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: bold; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th { background-color: var(--primary); color: white; padding: 12px; text-align: center; }
+        td { border: 1px solid #eee; padding: 10px; text-align: center; }
+        tr:nth-child(even) { background-color: #fcfcfc; }
+        .status-libre { color: var(--success); font-weight: bold; }
+        .status-ocupado { color: var(--danger); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📋 Detalle de Red Externa (GSA)</h2>
+    
+    <div class="search-box">
+        <input type="text" id="qrInput" placeholder="Ingrese QR (ej: TP1387397)" value="TP1387397">
+        <button onclick="consultar()">BUSCAR</button>
+    </div>
+
+    <div id="loading" style="display:none; text-align:center; color: #666;">Obteniendo información del nodo...</div>
+
+    <div id="resultado" style="display:none;">
+        <div class="info-grid">
+            <div class="card"><b>QR Identificado</b><span id="resQR">-</span></div>
+            <div class="card"><b>Nombre del Equipo</b><span id="resNombre">-</span></div>
+            <div class="card"><b>Puertos Libres</b><span id="resLibres" style="font-size: 1.2em;">-</span></div>
+            <div class="card">
+                <b>Ubicación y Coordenadas</b>
+                <span id="resCoords">-</span><br>
+                <a id="resMaps" href="#" target="_blank" class="maps-btn">📍 Abrir Google Maps</a>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th># Puerto</th>
+                    <th>Frame</th>
+                    <th>Slot</th>
+                    <th>Puerto (ID)</th>
+                    <th>N° Puerto Real</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="tablaPuertos"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    async function consultar() {
+        const qr = document.getElementById('qrInput').value.trim();
+        if(!qr) return;
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('resultado').style.display = 'none';
+
+        // Usamos AllOrigins para Netlify/GitHub
+        const url = `https://apiservice.sistemastp.com.mx/gsa/lite/v1/port/qr?qr=${qr}`;
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+
+        try {
+            const response = await fetch(proxyUrl);
+            const wrapper = await response.json();
+            const data = JSON.parse(wrapper.contents);
+
+            mostrarDatos(data, qr);
+        } catch (error) {
+            alert("Error al obtener datos. Revisa el QR o la conexión.");
+            console.error(error);
+        } finally {
+            document.getElementById('loading').style.display = 'none';
+        }
+    }
+
 function mostrarDatos(data, qr) {
     document.getElementById('resultado').style.display = 'block';
     
@@ -44,3 +141,7 @@ function mostrarDatos(data, qr) {
         tabla.innerHTML = "<tr><td colspan='6'>No se encontraron splitters en este QR</td></tr>";
     }
 }
+</script>
+
+</body>
+</html>
