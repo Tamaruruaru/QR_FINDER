@@ -3,30 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador GSA - Detalle de Puertos</title>
+    <title>Buscador GSA - Planta Externa</title>
     <style>
         :root { --primary: #053b6f; --accent: #007bff; --success: #28a745; --danger: #dc3545; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        h2 { color: var(--primary); text-align: center; border-bottom: 3px solid var(--accent); padding-bottom: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h2 { color: var(--primary); text-align: center; border-bottom: 3px solid var(--accent); padding-bottom: 10px; margin-top: 0; }
         
         .search-box { display: flex; gap: 10px; margin: 20px 0; }
-        input { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; }
-        button { padding: 12px 25px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        input { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; outline: none; }
+        input:focus { border-color: var(--accent); }
+        button { padding: 12px 25px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         button:hover { background: var(--accent); }
 
-        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .card { background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent); }
-        .card b { color: var(--primary); display: block; margin-bottom: 5px; text-transform: uppercase; font-size: 12px; }
+        .card b { color: var(--primary); display: block; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
         
-        .maps-btn { display: inline-block; margin-top: 10px; padding: 8px 12px; background: #4285F4; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: bold; }
+        .maps-btn { display: inline-block; margin-top: 10px; padding: 8px 15px; background: #4285F4; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; font-weight: bold; text-align: center; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th { background-color: var(--primary); color: white; padding: 12px; text-align: center; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th { background-color: var(--primary); color: white; padding: 12px; text-align: center; white-space: nowrap; }
         td { border: 1px solid #eee; padding: 10px; text-align: center; }
         tr:nth-child(even) { background-color: #fcfcfc; }
-        .status-libre { color: var(--success); font-weight: bold; }
-        .status-ocupado { color: var(--danger); font-weight: bold; }
+        
+        .status-libre { color: var(--success); font-weight: bold; background: #e8f5e9; padding: 4px 8px; border-radius: 4px; }
+        .status-ocupado { color: var(--danger); font-weight: bold; background: #ffebee; padding: 4px 8px; border-radius: 4px; font-size: 11px; }
+        
+        #loading { text-align: center; padding: 20px; color: #666; font-style: italic; }
     </style>
 </head>
 <body>
@@ -35,120 +40,115 @@
     <h2>📋 Detalle de Red Externa (GSA)</h2>
     
     <div class="search-box">
-        <input type="text" id="qrInput" placeholder="Ingrese QR (ej: TP1387397)" value="TP1387397">
+        <input type="text" id="qrInput" placeholder="QR (ej: TP1387397)" value="TP1387397">
         <button onclick="consultar()">BUSCAR</button>
     </div>
 
-    <div id="loading" style="display:none; text-align:center; color: #666;">Obteniendo información del nodo...</div>
+    <div id="loading" style="display:none;">🔍 Consultando base de datos de Sistemastp...</div>
 
     <div id="resultado" style="display:none;">
         <div class="info-grid">
-            <div class="card"><b>QR Identificado</b><span id="resQR">-</span></div>
+            <div class="card"><b>QR / Caja</b><span id="resQR">-</span></div>
             <div class="card"><b>Nombre del Equipo</b><span id="resNombre">-</span></div>
-            <div class="card"><b>Puertos Libres</b><span id="resLibres" style="font-size: 1.2em;">-</span></div>
+            <div class="card"><b>Disponibilidad</b><span id="resLibres">-</span></div>
             <div class="card">
-                <b>Ubicación y Coordenadas</b>
-                <span id="resCoords">-</span><br>
-                <a id="resMaps" href="#" target="_blank" class="maps-btn">📍 Abrir Google Maps</a>
+                <b>Ubicación</b>
+                <span id="resCoords" style="font-size: 11px;">-</span><br>
+                <a id="resMaps" href="#" target="_blank" class="maps-btn">📍 Google Maps</a>
             </div>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th># Puerto</th>
-                    <th>Frame</th>
-                    <th>Slot</th>
-                    <th>Puerto (ID)</th>
-                    <th>N° Puerto Real</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
-            <tbody id="tablaPuertos"></tbody>
-        </table>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>N° Puerto</th>
+                        <th>Frame</th>
+                        <th>Slot</th>
+                        <th>Puerto ID</th>
+                        <th>Cuenta / Cliente</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaPuertos"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <script>
     async function consultar() {
         const qr = document.getElementById('qrInput').value.trim();
-        if(!qr) return;
+        if(!qr) return alert("Por favor ingresa un código QR");
 
         document.getElementById('loading').style.display = 'block';
         document.getElementById('resultado').style.display = 'none';
 
-        // Usamos AllOrigins para Netlify/GitHub
+        // Usamos AllOrigins para saltar el bloqueo de CORS
         const url = `https://apiservice.sistemastp.com.mx/gsa/lite/v1/port/qr?qr=${qr}`;
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
 
         try {
             const response = await fetch(proxyUrl);
             const wrapper = await response.json();
+            
+            // AllOrigins devuelve el JSON como string en .contents
             const data = JSON.parse(wrapper.contents);
 
-            mostrarDatos(data, qr);
+            if (data.splitters && data.splitters.length > 0) {
+                mostrarDatos(data, qr);
+            } else {
+                alert("No se encontró información técnica para este QR.");
+            }
         } catch (error) {
-            alert("Error al obtener datos. Revisa el QR o la conexión.");
             console.error(error);
+            alert("Error de conexión. Intenta de nuevo o verifica que el QR sea válido.");
         } finally {
             document.getElementById('loading').style.display = 'none';
         }
     }
 
-function mostrarDatos(data, qr) {
-    document.getElementById('resultado').style.display = 'block';
-    
-    // Verificamos si hay splitters disponibles
-    if (data.splitters && data.splitters.length > 0) {
-        const splitter = data.splitters[0]; // Tomamos el primer splitter que es donde está la info
-        
-        // 1. Datos Generales - Usando 'nombre' del splitter como solicitaste
+    function mostrarDatos(data, qr) {
+        const splitter = data.splitters[0];
+        const puertos = splitter.listmodelpuertos || [];
+
+        // 1. Cabecera
         document.getElementById('resQR').innerText = data.qr || qr;
         document.getElementById('resNombre').innerText = splitter.nombre || data.nombreCaja || 'N/A';
         
         const lat = data.latitud || 0;
         const lon = data.longitud || 0;
         document.getElementById('resCoords').innerText = `${lat}, ${lon}`;
-        
-        // Link de Maps optimizado
         document.getElementById('resMaps').href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
 
-        // 2. Procesar Puertos
+        // 2. Conteo de Libres
+        const libres = puertos.filter(p => p.estatusPuerto == "1").length;
+        document.getElementById('resLibres').innerHTML = `<b style="color:var(--success)">${libres}</b> Libres de ${puertos.length}`;
+
+        // 3. Renderizar Tabla
         const tabla = document.getElementById('tablaPuertos');
         tabla.innerHTML = "";
-        
-        const puertos = splitter.listmodelpuertos || [];
-        const libres = puertos.filter(p => p.estatusPuerto == "1").length;
-        document.getElementById('resLibres').innerHTML = `<b style="color:green">${libres}</b> de ${puertos.length} disponibles`;
 
         puertos.forEach((p) => {
-            // Estatus: "1" es Libre. Si no es 1, intentamos mostrar la Cuenta del cliente
             const esLibre = p.estatusPuerto == "1";
-            let textoEstado = "";
-            
-            if (esLibre) {
-                textoEstado = "LIBRE";
-            } else {
-                // Si está ocupado, muestra el número de cuenta; si no hay cuenta, dice OCUPADO
-                textoEstado = p.cuenta ? `CUENTA: ${p.cuenta}` : "OCUPADO";
-            }
-            
+            const textoEstado = esLibre ? "DISPONIBLE" : "OCUPADO";
+            const datoCuenta = p.cuenta ? p.cuenta : (esLibre ? "---" : "SIN DATO");
+
             const row = `
                 <tr>
                     <td><b>${p.numeroPuerto}</b></td>
                     <td>${splitter.frame || 'N/A'}</td>
                     <td>${splitter.slot || 'N/A'}</td>
                     <td>${splitter.puerto || 'N/A'}</td>
-                    <td>${p.numeroPuerto}</td>
-                    <td class="${esLibre ? 'status-libre' : 'status-ocupado'}">${textoEstado}</td>
+                    <td>${datoCuenta}</td>
+                    <td><span class="${esLibre ? 'status-libre' : 'status-ocupado'}">${textoEstado}</span></td>
                 </tr>
             `;
             tabla.insertAdjacentHTML('beforeend', row);
         });
-    } else {
-        document.getElementById('resultado').innerHTML = "<p style='padding:20px;'>No se encontró información técnica (splitters) para este QR.</p>";
+
+        document.getElementById('resultado').style.display = 'block';
     }
-}
 </script>
 
 </body>
