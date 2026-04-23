@@ -98,32 +98,40 @@
 function mostrarDatos(data, qr) {
     document.getElementById('resultado').style.display = 'block';
     
-    // 1. Datos Generales (usando los campos del JSON real)
-    document.getElementById('resQR').innerText = data.qr || qr;
-    document.getElementById('resNombre').innerText = data.nombreCaja || 'Sin nombre';
-    
-    const lat = data.latitud || 0;
-    const lon = data.longitud || 0;
-    document.getElementById('resCoords').innerText = `${lat}, ${lon}`;
-    document.getElementById('resMaps').href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
-
-    // 2. Acceder al primer splitter y sus puertos
-    const tabla = document.getElementById('tablaPuertos');
-    tabla.innerHTML = "";
-    
-    // Verificamos que existan splitters
+    // Verificamos si hay splitters disponibles
     if (data.splitters && data.splitters.length > 0) {
-        const splitter = data.splitters[0]; // Tomamos el primer splitter
-        const puertos = splitter.listmodelpuertos || [];
+        const splitter = data.splitters[0]; // Tomamos el primer splitter que es donde está la info
         
-        // El JSON usa "1" para LIBRE, ajustamos el conteo
+        // 1. Datos Generales - Usando 'nombre' del splitter como solicitaste
+        document.getElementById('resQR').innerText = data.qr || qr;
+        document.getElementById('resNombre').innerText = splitter.nombre || data.nombreCaja || 'N/A';
+        
+        const lat = data.latitud || 0;
+        const lon = data.longitud || 0;
+        document.getElementById('resCoords').innerText = `${lat}, ${lon}`;
+        
+        // Link de Maps optimizado
+        document.getElementById('resMaps').href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+
+        // 2. Procesar Puertos
+        const tabla = document.getElementById('tablaPuertos');
+        tabla.innerHTML = "";
+        
+        const puertos = splitter.listmodelpuertos || [];
         const libres = puertos.filter(p => p.estatusPuerto == "1").length;
         document.getElementById('resLibres').innerHTML = `<b style="color:green">${libres}</b> de ${puertos.length} disponibles`;
 
         puertos.forEach((p) => {
-            // Estatus: 1 es Libre, cualquier otro suele ser Ocupado (Cuenta asignada)
+            // Estatus: "1" es Libre. Si no es 1, intentamos mostrar la Cuenta del cliente
             const esLibre = p.estatusPuerto == "1";
-            const estadoTexto = esLibre ? "LIBRE" : (p.cuenta || "OCUPADO");
+            let textoEstado = "";
+            
+            if (esLibre) {
+                textoEstado = "LIBRE";
+            } else {
+                // Si está ocupado, muestra el número de cuenta; si no hay cuenta, dice OCUPADO
+                textoEstado = p.cuenta ? `CUENTA: ${p.cuenta}` : "OCUPADO";
+            }
             
             const row = `
                 <tr>
@@ -132,13 +140,13 @@ function mostrarDatos(data, qr) {
                     <td>${splitter.slot || 'N/A'}</td>
                     <td>${splitter.puerto || 'N/A'}</td>
                     <td>${p.numeroPuerto}</td>
-                    <td class="${esLibre ? 'status-libre' : 'status-ocupado'}">${estadoTexto}</td>
+                    <td class="${esLibre ? 'status-libre' : 'status-ocupado'}">${textoEstado}</td>
                 </tr>
             `;
             tabla.insertAdjacentHTML('beforeend', row);
         });
     } else {
-        tabla.innerHTML = "<tr><td colspan='6'>No se encontraron splitters en este QR</td></tr>";
+        document.getElementById('resultado').innerHTML = "<p style='padding:20px;'>No se encontró información técnica (splitters) para este QR.</p>";
     }
 }
 </script>
